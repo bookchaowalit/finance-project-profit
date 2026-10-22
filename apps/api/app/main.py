@@ -21,6 +21,7 @@ from app.errors import (
     error_body,
     install_error_handlers,
 )
+from app.observability import init_sentry
 from app.routes import router
 
 log = logging.getLogger("profit_api")
@@ -88,4 +89,5 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
 def app_factory() -> FastAPI:
     """Uvicorn entrypoint: ``uvicorn app.main:app_factory --factory``."""
+    init_sentry()  # no-op unless SENTRY_DSN is set
     return create_app()

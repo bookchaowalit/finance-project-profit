@@ -163,3 +163,13 @@ Logs carry only request id, event name and exception class — never tokens,
 bodies, SQL or DB URLs; client errors never echo submitted values. Audit rows
 (`audit_events`) store actor `(iss, sub)`, action, resource ids, request id and
 bounded (≤2 KiB) metadata. No CORS is enabled: browsers talk to the Next.js BFF.
+
+### Error reporting (Sentry, opt-in)
+
+`app/observability.py` turns Sentry on only when `SENTRY_DSN` is set on the host
+(optional `SENTRY_ENVIRONMENT`, `SENTRY_RELEASE`); without it nothing is sent.
+Errors only (no tracing, breadcrumbs or local variables). Unhandled errors and
+database errors are reported with the request id; every event passes an allowlist
+scrubber (`scrub_event`) that drops request data, users, exception messages and
+frame variables. Tested in `tests/test_observability.py`. The web app (BFF) has no
+Sentry yet.

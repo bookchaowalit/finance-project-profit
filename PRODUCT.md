@@ -62,6 +62,9 @@ The repository is a new product boundary. It has no real customer data,
 testimonials, verified commercial results, or approved pricing.
 Any test or demonstration data must be identified as synthetic.
 Hosting targets are documented intentions, not proof of a live deployment.
+The API has opt-in Sentry error reporting (off unless `SENTRY_DSN` is set; allowlist
+scrubber, errors only); no Sentry project or DSN is configured yet, and the web BFF
+has no error reporting.
 
 ## Product Principles
 

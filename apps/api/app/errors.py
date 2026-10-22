@@ -16,6 +16,8 @@ from sqlalchemy.exc import TimeoutError as PoolTimeoutError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+from app.observability import report_exception
+
 log = logging.getLogger("profit_api")
 _REQUEST_ID_RE = re.compile(r"^[A-Za-z0-9._-]{8,64}$")
 MAX_BODY_BYTES = 64 * 1024
@@ -98,6 +100,7 @@ class RequestContextMiddleware:
         except Exception as exc:
             # Only the exception class is logged: messages may embed URLs or payloads.
             log.error("unhandled_error request_id=%s type=%s", rid, type(exc).__name__)
+            report_exception(exc, rid)
             if started:
                 return
             body = json.dumps(error_body("internal_error", "Internal server error", rid)).encode()
@@ -181,4 +184,5 @@ def install_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(DBAPIError)
     async def _db_error(request: Request, exc: Exception) -> JSONResponse:
         log.error("database_error request_id=%s type=%s", _rid(request), type(exc).__name__)
+        report_exception(exc, _rid(request))
         return _json(500, "internal_error", "Internal server error", _rid(request))
