@@ -3,7 +3,10 @@
 Off unless ``SENTRY_DSN`` is set. Errors only: no tracing, no profiling, no breadcrumbs,
 no local variables, no request bodies, headers, cookies or query strings. Every event
 passes through :func:`scrub_event`, an allowlist: anything not named there is dropped,
-so a new SDK field can never leak financial records or user identifiers.
+so a new SDK field can never leak financial records or user identifiers (``logentry`` and
+``message`` are not allowlisted: the API never calls ``capture_message``). Log records never
+become events or breadcrumbs: ``LoggingIntegration`` is switched off, since log lines (ours or
+a library's) hold free text such as URLs with query strings.
 """
 
 from __future__ import annotations
@@ -12,6 +15,7 @@ import os
 from typing import Any
 
 import sentry_sdk
+from sentry_sdk.integrations.logging import LoggingIntegration
 
 # Top-level event keys that may leave the process. Everything else is removed.
 _ALLOWED_EVENT_KEYS = frozenset(
@@ -87,6 +91,7 @@ def init_sentry(env: dict[str, str] | None = None) -> bool:
         traces_sample_rate=0.0,
         before_send=scrub_event,  # type: ignore[arg-type]
         before_send_transaction=lambda _event, _hint: None,
+        integrations=[LoggingIntegration(level=None, event_level=None, sentry_logs_level=None)],
     )
     sentry_sdk.set_tag("service", "project-profit-api")
     return True

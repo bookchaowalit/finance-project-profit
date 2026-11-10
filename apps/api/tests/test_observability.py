@@ -8,6 +8,7 @@ from typing import Any
 import pytest
 import sentry_sdk
 from sentry_sdk.envelope import Envelope
+from sentry_sdk.integrations.logging import LoggingIntegration
 from sentry_sdk.transport import Transport
 from starlette.applications import Starlette
 from starlette.requests import Request
@@ -84,6 +85,47 @@ def test_scrubbed_event_contains_no_sensitive_strings() -> None:
     text = repr(scrub_event(_raw_event()))
     for secret in ("secret-token", "owner@example.test", "123456", "Acme", "10.0.0.1", "sid=1"):
         assert secret not in text
+
+
+def test_scrubber_drops_logentry_log_text() -> None:
+    event = {
+        "event_id": "abc",
+        "level": "error",
+        "logger": "httpx",
+        "logentry": {"message": "GET https://bank.test/api?token=sk-live-SECRET123 failed"},
+    }
+    out = scrub_event(event)
+    assert "logentry" not in out
+    assert "sk-live-SECRET123" not in repr(out)
+
+
+def test_scrubber_drops_message_not_from_our_reporters() -> None:
+    # The API never calls capture_message, so any message is free log text.
+    out = scrub_event({"event_id": "abc", "message": "invoice 50,000 THB for owner@example.test"})
+    assert "message" not in out
+    assert "owner@example.test" not in repr(out)
+
+
+def test_scrubber_drops_exception_value() -> None:
+    out = scrub_event({"exception": {"values": [{"type": "KeyError", "value": "'token=abc123'"}]}})
+    assert out["exception"]["values"][0] == {"type": "KeyError"}
+
+
+def test_init_disables_log_to_event_and_breadcrumbs(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[dict[str, Any]] = []
+    monkeypatch.setattr(sentry_sdk, "init", lambda **kwargs: calls.append(kwargs))
+    monkeypatch.setattr(sentry_sdk, "set_tag", lambda *_args: None)
+
+    assert init_sentry({"SENTRY_DSN": "https://public@o0.ingest.sentry.io/0"}) is True
+
+    integrations = calls[0]["integrations"]
+    assert len(integrations) == 1
+    logging_integration = integrations[0]
+    assert isinstance(logging_integration, LoggingIntegration)
+    # event_level=None: no log record becomes an event; level=None: no log breadcrumbs.
+    assert logging_integration._handler is None
+    assert logging_integration._breadcrumb_handler is None
+    assert logging_integration._sentry_logs_handler is None
 
 
 def test_init_is_off_without_dsn() -> None:
