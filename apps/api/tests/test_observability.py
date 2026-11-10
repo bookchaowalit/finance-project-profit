@@ -183,3 +183,26 @@ def test_unhandled_error_is_reported_scrubbed(sentry_capture: _Capture) -> None:
     assert "987654" not in text
     assert "owner@example.test" not in text
     assert "token=abc" not in text
+
+
+def test_database_unavailable_is_reported_explicitly(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Log-to-event is off, so the 503 handler must report the failure itself or an outage
+    # never reaches Sentry.
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    from sqlalchemy.exc import OperationalError
+
+    import app.errors as errors
+
+    reported: list[BaseException] = []
+    monkeypatch.setattr(errors, "report_exception", lambda exc, rid=None: reported.append(exc))
+    api = FastAPI()
+    errors.install_error_handlers(api)
+
+    @api.get("/boom")
+    def boom() -> None:
+        raise OperationalError("SELECT 1", {}, Exception("db down"))
+
+    r = TestClient(api).get("/boom")
+    assert r.status_code == 503
+    assert [type(e) for e in reported] == [OperationalError]

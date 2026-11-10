@@ -179,6 +179,8 @@ def install_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(PoolTimeoutError)
     async def _db_unavailable(request: Request, exc: Exception) -> JSONResponse:
         log.error("database_unavailable request_id=%s type=%s", _rid(request), type(exc).__name__)
+        # Log-to-event is off (log text can carry payloads), so report the outage explicitly.
+        report_exception(exc, _rid(request))
         return _json(503, "service_unavailable", "Service temporarily unavailable", _rid(request))
 
     @app.exception_handler(DBAPIError)
