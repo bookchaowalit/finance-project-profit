@@ -1,2 +1,4 @@
 # unit-test UUID constant (the RFC 4122 example 123e4567-...) (reviewed 2026-10-12)
 3002d08eac4da58e3242d1049ab58980d45dce69:apps/web/tests/unit/proxy.test.ts:generic-api-key:6
+# Fake "sk-live-..." token in a Sentry scrub regression test (replaced by a low-entropy fake in the next commit). Reviewed 2026-11-10.
+fb24c3adaa65d97d5b28ec91ae8190e1a995202d:apps/api/tests/test_observability.py:generic-api-key:95

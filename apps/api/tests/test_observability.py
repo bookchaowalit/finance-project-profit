@@ -92,11 +92,11 @@ def test_scrubber_drops_logentry_log_text() -> None:
         "event_id": "abc",
         "level": "error",
         "logger": "httpx",
-        "logentry": {"message": "GET https://bank.test/api?token=sk-live-SECRET123 failed"},
+        "logentry": {"message": "GET https://bank.test/api?token=leaky-token failed"},
     }
     out = scrub_event(event)
     assert "logentry" not in out
-    assert "sk-live-SECRET123" not in repr(out)
+    assert "leaky-token" not in repr(out)
 
 
 def test_scrubber_drops_message_not_from_our_reporters() -> None:
